@@ -20,12 +20,12 @@ class RNGoogleFit {
 
     //Will be deprecated in future releases
     getSteps(dayStart,dayEnd) {
-        googleFit.getDailySteps(Date.parse(dayStart), Date.parse(dayEnd));
+        googleFit.getDailySteps(dayStart, dayEnd);
     }
 
     //Will be deprecated in future releases
     getWeeklySteps(startDate) {
-        googleFit.getWeeklySteps(Date.parse(startDate), Date.now());
+        googleFit.getWeeklySteps(startDate, Date.now());
     }
 
 
@@ -36,8 +36,8 @@ class RNGoogleFit {
      */
 
     getDailyStepCountSamples(options, callback) {
-        let startDate = options.startDate != undefined ? Date.parse(options.startDate) : (new Date()).setHours(0,0,0,0);
-        let endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
+        let startDate = options.startDate;
+        let endDate = options.endDate;
         googleFit.getDailyStepCountSamples( startDate,
             endDate,
             (msg) => {
@@ -92,8 +92,8 @@ class RNGoogleFit {
      */
 
     getDailyDistanceSamples(options, callback) {
-        let startDate = Date.parse(options.startDate);
-        let endDate = Date.parse(options.endDate);
+        let startDate = options.startDate;
+        let endDate = options.endDate;
         googleFit.getDailyDistanceSamples( startDate,
             endDate,
             (msg) => {

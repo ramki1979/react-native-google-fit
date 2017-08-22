@@ -20,12 +20,13 @@
     "ReactNative"
   ],
   "author": "Stanislav Doskalenko",
+  "homepage": "https://github.com/ramki1979/react-native-google-fit",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/StasDoskalenko/react-native-google-fit.git"
+    "url": "https://github.com/ramki1979/react-native-google-fit.git"
   },
   "bugs": {
-    "url": "https://github.com/StasDoskalenko/react-native-google-fit/issues"
+    "url": "https://github.com/ramki1979/react-native-google-fit/issues"
   }
 }
