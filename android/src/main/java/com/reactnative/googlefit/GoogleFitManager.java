@@ -44,14 +44,16 @@ public class GoogleFitManager implements
     private GoogleApiClient mApiClient;
     private static final int REQUEST_OAUTH = 1001;
     private static final String AUTH_PENDING = "auth_state_pending";
-    private boolean mAuthInProgress = false;
+    private static boolean mAuthInProgress = false;
     private Activity mActivity;
 
     private DistanceHistory distanceHistory;
     private StepHistory stepHistory;
     private WeightsHistory weightsHistory;
+    private CalorieHistory calorieHistory;
     private StepCounter mStepCounter;
     private StepSensor stepSensor;
+    private RecordingApi recordingApi;
 
     private static final String TAG = "RNGoogleFit";
 
@@ -67,12 +69,17 @@ public class GoogleFitManager implements
         this.stepHistory = new StepHistory(mReactContext, this);
         this.weightsHistory = new WeightsHistory(mReactContext, this);
         this.distanceHistory = new DistanceHistory(mReactContext, this);
-
-//        this.stepSensor = new StepSensor(mReactContext, activity);
+        this.calorieHistory = new CalorieHistory(mReactContext, this);
+        this.recordingApi = new RecordingApi(mReactContext, this);
+        //        this.stepSensor = new StepSensor(mReactContext, activity);
     }
 
     public GoogleApiClient getGoogleApiClient() {
         return mApiClient;
+    }
+
+    public RecordingApi getRecordingApi() {
+        return recordingApi;
     }
 
     public StepCounter getStepCounter() {
@@ -93,17 +100,20 @@ public class GoogleFitManager implements
 
     public void resetAuthInProgress()
     {
-        if (!isAuthorize()) {
+        if (!isAuthorized()) {
             mAuthInProgress = false;
         }
     }
 
-    public void authorize(@Nullable final Callback errorCallback, @Nullable final Callback successCallback) {
+    public CalorieHistory getCalorieHistory() { return calorieHistory; }
 
-        //Log.i(TAG, "Authorizing");
+    public void authorize() {
+        final ReactContext mReactContext = this.mReactContext;
+
         mApiClient = new GoogleApiClient.Builder(mReactContext.getApplicationContext())
                 .addApi(Fitness.SENSORS_API)
                 .addApi(Fitness.HISTORY_API)
+                .addApi(Fitness.RECORDING_API)
                 .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
                 .addScope(new Scope(Scopes.FITNESS_BODY_READ_WRITE))
                 .addScope(new Scope(Scopes.FITNESS_LOCATION_READ))
@@ -112,13 +122,7 @@ public class GoogleFitManager implements
                         @Override
                         public void onConnected(@Nullable Bundle bundle) {
                             Log.i(TAG, "Authorization - Connected");
-
-                            //sendEvent(this.mReactContext, "AuthorizeEvent", map);
-                            if (successCallback != null) {
-                                WritableMap map = Arguments.createMap();
-                                map.putBoolean("authorized", true);
-                                successCallback.invoke(map);
-                            }
+                            sendEvent(mReactContext, "GoogleFitAuthorizeSuccess", null);
                         }
 
                         @Override
@@ -134,12 +138,13 @@ public class GoogleFitManager implements
                     new GoogleApiClient.OnConnectionFailedListener() {
                         @Override
                         public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+                            WritableMap map = Arguments.createMap();
+                            map.putString("message", "" + connectionResult);
+                            sendEvent(mReactContext, "GoogleFitAuthorizeFailure", map);
+
                             Log.i(TAG, "Authorization - Failed Authorization Mgr:" + connectionResult);
                             if (mAuthInProgress) {
                                 Log.i(TAG, "Authorization - Already attempting to resolve an error.");
-                                //if (errorCallback != null) {
-                                //    errorCallback.invoke("Failed Authorization Mgr");
-                                //}
                             } else if (connectionResult.hasResolution()) {
                                 try {
                                     mAuthInProgress = true;
@@ -161,7 +166,7 @@ public class GoogleFitManager implements
         mApiClient.connect();
     }
 
-    public boolean isAuthorize() {
+    public boolean isAuthorized() {
         if (mApiClient != null && mApiClient.isConnected()) {
             return true;
         } else {
@@ -210,24 +215,25 @@ public class GoogleFitManager implements
     public void onNewIntent(Intent intent) {
     }
 
+    public static class GoogleFitCustomErrorDialig extends ErrorDialogFragment {
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            // Get the error code and retrieve the appropriate dialog
+            int errorCode = this.getArguments().getInt(AUTH_PENDING);
+            return GoogleApiAvailability.getInstance().getErrorDialog(
+                    this.getActivity(), errorCode, REQUEST_OAUTH);
+        }
+
+        @Override
+        public void onCancel(DialogInterface dialog) {
+            mAuthInProgress = false;
+        }
+    }
+
     /* Creates a dialog for an error message */
     private void showErrorDialog(int errorCode) {
         // Create a fragment for the error dialog
-        ErrorDialogFragment dialogFragment = new ErrorDialogFragment() {
-            @Override
-            public Dialog onCreateDialog(Bundle savedInstanceState) {
-                // Get the error code and retrieve the appropriate dialog
-                int errorCode = this.getArguments().getInt(AUTH_PENDING);
-                return GoogleApiAvailability.getInstance().getErrorDialog(
-                        this.getActivity(), errorCode, REQUEST_OAUTH);
-            }
-
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                mAuthInProgress = false;
-            }
-        };
-
+        GoogleFitCustomErrorDialig dialogFragment = new GoogleFitCustomErrorDialig();
         // Pass the error that should be displayed
         Bundle args = new Bundle();
         args.putInt(AUTH_PENDING, errorCode);
